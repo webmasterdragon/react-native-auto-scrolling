@@ -6,13 +6,13 @@ import {
   StyleProp,
   View,
   ViewStyle,
-  LayoutChangeEvent
+  LayoutChangeEvent,
 } from "react-native";
 
 interface Props {
   children: React.ReactElement<any>;
   style?: StyleProp<ViewStyle>;
-  endPaddingWidth?: number;
+  endPaddingHeight?: number;
   duration?: number;
   delay?: number;
 }
@@ -20,67 +20,69 @@ interface Props {
 const AutoScrolling = ({
   style,
   children,
-  endPaddingWidth = 100,
+  endPaddingHeight = 10,
   duration,
-  delay = 0
+  delay = 0,
 }: Props) => {
-  const containerWidth = React.useRef(0);
-  const contentWidth = React.useRef(0);
+  const containerHeight = React.useRef(0);
+  const contentHeight = React.useRef(0);
   const [isAutoScrolling, setIsAutoScrolling] = React.useState(false);
-  const [dividerWidth, setDividerWidth] = React.useState(endPaddingWidth);
-  const offsetX = React.useRef(new Animated.Value(0));
+  const [dividerHeight, setDividerHeight] = React.useState(endPaddingHeight);
+  const offsetY = React.useRef(new Animated.Value(0));
   let contentRef: any;
 
   function measureContainerView(event: LayoutChangeEvent) {
-    const newContainerWidth = event.nativeEvent.layout.width;
-    if (containerWidth.current === newContainerWidth) return;
-    containerWidth.current = newContainerWidth;
+    const newContainerHeight = event.nativeEvent.layout.height;
+    if (containerHeight.current === newContainerHeight) return;
+    containerHeight.current = newContainerHeight;
     if (!contentRef) return;
-    contentRef.measure((fx: number, fy: number, width: number) => {
-      checkContent(width, fx);
-    });
+    contentRef.measure(
+      (fx: number, fy: number, width: number, height: number) => {
+        checkContent(height, fy);
+      }
+    );
   }
 
-  function checkContent(newContentWidth: number, fx: number) {
-    if (!newContentWidth) {
+  function checkContent(newContentHeight: number, fy: number) {
+    if (!newContentHeight) {
       setIsAutoScrolling(false);
       return;
     }
-    if (contentWidth.current === newContentWidth) return;
-    contentWidth.current = newContentWidth;
-    let newDividerWidth = endPaddingWidth;
-    if (contentWidth.current < containerWidth.current) {
-      if (endPaddingWidth < containerWidth.current - contentWidth.current) {
-        newDividerWidth = containerWidth.current - contentWidth.current;
+    if (contentHeight.current === newContentHeight) return;
+    contentHeight.current = newContentHeight;
+    let newDividerHeight = endPaddingHeight;
+    if (contentHeight.current < containerHeight.current) {
+      if (endPaddingHeight < containerHeight.current - contentHeight.current) {
+        newDividerHeight = containerHeight.current - contentHeight.current;
       }
     }
-    setDividerWidth(newDividerWidth);
+    setDividerHeight(newDividerHeight);
     setIsAutoScrolling(true);
     Animated.loop(
-      Animated.timing(offsetX.current, {
-        toValue: -(contentWidth.current + fx + newDividerWidth),
-        duration: duration || 50 * contentWidth.current,
+      Animated.timing(offsetY.current, {
+        toValue: -contentHeight.current + fy + newDividerHeight,
+        duration: duration || 50 * contentHeight.current,
         delay,
         easing: Easing.linear,
-        useNativeDriver: true
+        useNativeDriver: true,
       })
     ).start();
   }
 
   function measureContentView(event: LayoutChangeEvent) {
-    const { width, x } = event.nativeEvent.layout;
-    if (!containerWidth.current || width === contentWidth.current) return;
-    offsetX.current.stopAnimation();
-    offsetX.current.setValue(0);
-    offsetX.current.setOffset(0);
-    checkContent(width, x);
+    const { height, y } = event.nativeEvent.layout;
+    if (!containerHeight.current || height === contentHeight.current) return;
+    offsetY.current.stopAnimation();
+    offsetY.current.setValue(0);
+    offsetY.current.setOffset(0);
+    checkContent(height, y);
   }
 
   const childrenProps = children.props;
   const childrenWithProps = React.cloneElement(children, {
     ...childrenProps,
     onLayout: measureContentView,
-    ref: (ref: any) => (contentRef = ref)
+    ref: (ref: any) => (contentRef = ref),
   });
 
   return (
@@ -94,11 +96,11 @@ const AutoScrolling = ({
         <Animated.View
           style={{
             flexDirection: "row",
-            transform: [{ translateX: offsetX.current }]
+            transform: [{ translateY: offsetY.current }],
           }}
         >
           {childrenWithProps}
-          {isAutoScrolling && <View style={{ width: dividerWidth }} />}
+          {isAutoScrolling && <View style={{ height: dividerHeight }} />}
           {isAutoScrolling && children}
         </Animated.View>
       </ScrollView>
